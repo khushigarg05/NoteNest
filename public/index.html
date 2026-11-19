@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NoteNest</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Poppins,system-ui,sans-serif;background:#fff;color:#2d2d3a}
+header{position:sticky;top:0;z-index:5;height:64px;display:flex;align-items:center;gap:24px;padding:0 20px;background:#fff;border-bottom:1px solid #eee}
+.logo{font-weight:600;font-size:20px;width:196px;color:#5b3fd9}
+#search{flex:1;max-width:620px;padding:12px 20px;border:0;border-radius:24px;background:#f3f4f8;font:inherit;outline:0}
+#search:focus{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.avatar{margin-left:auto;width:38px;height:38px;border-radius:50%;background:#dccfff;display:grid;place-items:center;font-weight:600;color:#5b3fd9}
+aside{position:fixed;top:64px;left:0;width:220px;padding:16px 10px 0 0}
+aside button{display:block;width:100%;text-align:left;padding:13px 24px;border:0;background:none;border-radius:0 28px 28px 0;font:inherit;cursor:pointer;color:#555}
+aside button:hover{background:#f3f4f8}
+aside button.on{background:#e8e0ff;color:#4a2fc0;font-weight:500}
+main{margin-left:220px;padding:28px 32px 110px}
+.create{max-width:560px;margin:0 auto 36px;background:#fff;border-radius:16px;box-shadow:0 2px 14px rgba(0,0,0,.14);padding:10px 16px}
+.create input,.create textarea,.box input,.box textarea{width:100%;border:0;outline:0;font:inherit;background:transparent;resize:none;padding:8px 0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px}
+.dots{display:flex;gap:8px}
+.dots span{width:22px;height:22px;border-radius:50%;cursor:pointer;border:1px solid rgba(0,0,0,.12)}
+.btn{border:0;border-radius:20px;padding:8px 18px;background:#7c5cff;color:#fff;font:inherit;cursor:pointer}
+.hide{display:none}
+.label{font-size:12px;letter-spacing:.08em;color:#888;margin:0 0 12px}
+.grid{columns:4 230px;column-gap:16px;margin-bottom:28px}
+.card{break-inside:avoid;margin-bottom:16px;padding:16px;border-radius:16px;box-shadow:0 1px 5px rgba(0,0,0,.1);position:relative;transition:transform .2s,box-shadow .2s}
+.card:hover{transform:translateY(-3px);box-shadow:0 10px 22px rgba(0,0,0,.15)}
+.card h3{margin:0 30px 8px 0;font-size:16px;font-weight:600}
+.card p{margin:0;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.pin{position:absolute;top:10px;right:10px}
+.tools{display:flex;gap:6px;margin-top:14px;opacity:0;transition:opacity .2s}
+.card:hover .tools{opacity:1}
+.i{border:0;background:rgba(255,255,255,.65);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px}
+.i:hover{background:#fff}
+.empty{text-align:center;color:#999;margin-top:60px}
+.fab{position:fixed;right:28px;bottom:28px;width:58px;height:58px;border-radius:50%;border:0;background:#7c5cff;color:#fff;font-size:30px;cursor:pointer;box-shadow:0 8px 20px rgba(124,92,255,.45);transition:transform .2s}
+.fab:hover{transform:scale(1.08) rotate(90deg)}
+.modal{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.35);display:none;place-items:center}
+.modal.show{display:grid}
+.box{width:min(560px,92vw);border-radius:16px;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+@media(max-width:800px){
+ aside{position:static;display:flex;padding:8px;overflow-x:auto}
+ aside button{border-radius:20px;width:auto;padding:8px 16px}
+ main{margin-left:0;padding:16px 16px 110px}
+ .logo{width:auto}.tools{opacity:1}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🪺 NoteNest</div>
+  <input id="search" placeholder="Search your notes...">
+  <div class="avatar">N</div>
+</header>
+<aside>
+  <button class="on" data-v="active">📝 Notes</button>
+  <button data-v="archived">📦 Archived</button>
+  <button data-v="trash">🗑️ Trash</button>
+</aside>
+<main>
+  <div class="create" id="create">
+    <input id="ct" placeholder="Take a note...">
+    <div id="cx" class="hide">
+      <textarea id="cb" rows="3" placeholder="Write your note..."></textarea>
+      <div class="row"><div class="dots" id="cdots"></div><button class="btn" id="close">Close</button></div>
+    </div>
+  </div>
+  <div id="list"></div>
+</main>
+<button class="fab" id="fab" title="New note">+</button>
+<div class="modal" id="modal"><div class="box" id="mbox">
+  <input id="mt" placeholder="Title"><textarea id="mb" rows="6" placeholder="Note"></textarea>
+  <div class="row"><div class="dots" id="mdots"></div><button class="btn" id="save">Save</button></div>
+</div></div>
+<script>
+const C=['#FFF3B0','#FFD6C9','#CDF2E1','#DCCFFF','#CFE8FF','#FFD1E8','#FFFFFF'];
+let notes=[],view='active',q='',editId=null,newColor=C[0],editColor=C[0];
+const $=s=>document.querySelector(s);
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const api=(m,id,b)=>fetch('/api/notes'+(id?'?id='+id:''),{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined}).then(r=>r.json());
+
+function dots(el,get,set){
+  el.innerHTML=C.map(c=>`<span data-c="${c}" style="background:${c};${get()==c?'outline:2px solid #7c5cff':''}"></span>`).join('');
+  el.onclick=e=>{if(e.target.dataset.c){set(e.target.dataset.c);dots(el,get,set)}};
+}
+async function load(){
+  const data=await api('GET');
+  if(!Array.isArray(data)){$('#list').innerHTML=`<p class="empty">Could not load notes: ${esc(data.error||'unknown error')}</p>`;return}
+  notes=data;render();
+}
+function card(n){
+  const t=view==='trash'
+    ?`<button class="i" data-a="restore" title="Restore">♻️</button><button class="i" data-a="del" title="Delete forever">❌</button>`
+    :`<button class="i" data-a="edit" title="Edit">✏️</button><button class="i" data-a="arch" title="${view==='archived'?'Unarchive':'Archive'}">📦</button><button class="i" data-a="del" title="Delete">🗑️</button>`;
+  const pin=view==='trash'?'':`<button class="i pin" data-a="pin" title="Pin">${n.pinned?'📌':'📍'}</button>`;
+  return `<div class="card" data-id="${n.id}" style="background:${n.color}">${pin}<h3>${esc(n.title)}</h3><p>${esc(n.body)}</p><div class="tools">${t}</div></div>`;
+}
+function render(){
+  const s=q.toLowerCase();
+  const list=notes.filter(n=>n.status===view&&(n.title+' '+n.body).toLowerCase().includes(s));
+  const pinned=view==='active'?list.filter(n=>n.pinned):[];
+  const others=view==='active'?list.filter(n=>!n.pinned):list;
+  let h='';
+  if(pinned.length)h+=`<p class="label">PINNED</p><div class="grid">${pinned.map(card).join('')}</div>`;
+  if(others.length)h+=(pinned.length?'<p class="label">OTHERS</p>':'')+`<div class="grid">${others.map(card).join('')}</div>`;
+  if(!list.length)h=`<p class="empty">${view==='active'?'No notes yet. Click "Take a note..." to add one.':'Nothing here.'}</p>`;
+  $('#list').innerHTML=h;
+}
+$('#list').onclick=async e=>{
+  const b=e.target.closest('[data-a]');if(!b)return;
+  const id=b.closest('.card').dataset.id,n=notes.find(x=>x.id==id),a=b.dataset.a;
+  if(a==='pin')await api('PUT',id,{pinned:!n.pinned});
+  else if(a==='arch')await api('PUT',id,{status:n.status==='archived'?'active':'archived',pinned:false});
+  else if(a==='restore')await api('PUT',id,{status:'active'});
+  else if(a==='del')n.status==='trash'?await api('DELETE',id):await api('PUT',id,{status:'trash',pinned:false});
+  else if(a==='edit'){editId=id;editColor=n.color;$('#mt').value=n.title;$('#mb').value=n.body;$('#mbox').style.background=n.color;dots($('#mdots'),()=>editColor,c=>{editColor=c;$('#mbox').style.background=c});$('#modal').classList.add('show');return}
+  load();
+};
+$('#save').onclick=async()=>{await api('PUT',editId,{title:$('#mt').value,body:$('#mb').value,color:editColor});$('#modal').classList.remove('show');load()};
+$('#modal').onclick=e=>{if(e.target.id==='modal')$('#modal').classList.remove('show')};
+$('#ct').onfocus=()=>{$('#cx').classList.remove('hide');dots($('#cdots'),()=>newColor,c=>{newColor=c;$('#create').style.background=c})};
+$('#close').onclick=async()=>{
+  const t=$('#ct').value.trim(),b=$('#cb').value.trim();
+  if(t||b)await api('POST',null,{title:t,body:b,color:newColor});
+  $('#ct').value='';$('#cb').value='';$('#cx').classList.add('hide');$('#create').style.background='#fff';newColor=C[0];
+  load();
+};
+$('#fab').onclick=()=>{scrollTo({top:0,behavior:'smooth'});$('#ct').focus()};
+$('#search').oninput=e=>{q=e.target.value;render()};
+document.querySelectorAll('aside button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('aside button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');view=b.dataset.v;render();
+});
+load();
+</script>
+</body>
+</html>

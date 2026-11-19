@@ -1,0 +1,9 @@
+{
+  "name": "notenest",
+  "version": "1.0.0",
+  "description": "NoteNest - a Google Keep clone (HTML/CSS/JS + Vercel serverless API + Neon Postgres)",
+  "private": true,
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4"
+  }
+}
